@@ -1,0 +1,237 @@
+:root {
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: #18212f;
+  background:
+    radial-gradient(circle at top left, rgba(255, 161, 22, 0.16), transparent 26%),
+    radial-gradient(circle at right top, rgba(10, 108, 255, 0.18), transparent 22%),
+    linear-gradient(180deg, #f4f7fb 0%, #edf2f7 100%);
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.page-shell {
+  width: min(1400px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 48px;
+}
+
+.hero-panel,
+.section-block,
+.admin-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(24, 33, 47, 0.06);
+  border-radius: 24px;
+  box-shadow: 0 24px 60px rgba(19, 40, 72, 0.08);
+}
+
+.hero-panel {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 24px;
+  padding: 32px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #d97706;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 16px;
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  line-height: 1.05;
+}
+
+.hero-text,
+.desc,
+.tip {
+  color: #526072;
+}
+
+.feature-grid,
+.stats-grid,
+.toolbar-grid,
+.car-grid,
+.admin-grid,
+.mini-stats {
+  display: grid;
+  gap: 16px;
+}
+
+.feature-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.feature-grid article,
+.stats-card {
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+  border: 1px solid rgba(217, 119, 6, 0.12);
+}
+
+.auth-panel {
+  padding: 12px;
+  background: linear-gradient(180deg, #18212f 0%, #24364e 100%);
+  border-radius: 20px;
+  color: #fff;
+}
+
+.profile-card,
+.section-head,
+.card-top,
+.car-meta,
+.rent-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-name {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profile-role {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.mini-stats {
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 24px;
+}
+
+.mini-stats div,
+.stats-card {
+  text-align: center;
+}
+
+.mini-stats strong,
+.stats-card strong {
+  display: block;
+  font-size: 28px;
+}
+
+.section-block {
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.stats-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.toolbar-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-bottom: 24px;
+}
+
+.toolbar-grid.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.car-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.car-card {
+  overflow: hidden;
+  border-radius: 22px;
+  background: #f8fafc;
+  border: 1px solid rgba(24, 33, 47, 0.08);
+}
+
+.car-card img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+}
+
+.car-body {
+  padding: 18px;
+}
+
+.car-meta {
+  margin: 16px 0;
+}
+
+.admin-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wide-btn {
+  width: 100%;
+}
+
+.map-panel {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+}
+
+.map-canvas {
+  min-height: 420px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(24, 33, 47, 0.08);
+}
+
+.map-fallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #eef4ff 0%, #f8fafc 100%);
+}
+
+.selected-point {
+  padding: 20px;
+  border-radius: 20px;
+  background: #f8fafc;
+  border: 1px solid rgba(24, 33, 47, 0.08);
+}
+
+@media (max-width: 1024px) {
+  .hero-panel,
+  .car-grid,
+  .admin-grid,
+  .stats-grid,
+  .feature-grid,
+  .map-panel,
+  .toolbar-grid,
+  .toolbar-grid.compact {
+    grid-template-columns: 1fr;
+  }
+}

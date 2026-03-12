@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: car-rental-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/car_rental?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  jwt:
+    secret: VGhpcy1Jcy1Bbi1FeGFtcGxlLVNlY3JldC1Gb3ItQ2FyLVJlbnRhbC1TeXN0ZW0tMjAyNg==
+    expire-seconds: 86400
+  alipay:
+    enabled: true
+    gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+    app-id: 9021000129625198
+    merchant-private-key-location: classpath:app_private_key.pem
+    merchant-private-key:
+    alipay-public-key-location: classpath:alipay_public_key.pem
+    alipay-public-key:
+    notify-url: http://xb822235.natappfree.cc/api/pay/alipay/notify
+    return-url: http://localhost:8080/api/pay/alipay/return
+    charset: UTF-8
+    sign-type: RSA2
