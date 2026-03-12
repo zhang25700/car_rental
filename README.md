@@ -1,6 +1,6 @@
 # 汽车租赁系统
 
-基于开题报告实现的本科毕业设计项目，采用前后端分离架构：
+本科毕业设计项目，采用前后端分离架构：
 
 - 后端：Spring Boot 3、MyBatis-Plus、MySQL、JWT、Swagger、支付宝沙盒支付
 - 前端：Vue 3、Vite、Element Plus、百度地图 JavaScript API
