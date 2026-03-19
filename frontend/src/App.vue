@@ -16,9 +16,11 @@ const markerOverlays = ref([])
 const selectedPoint = reactive({ address: '', longitude: '', latitude: '' })
 
 const loginForm = reactive({ username: 'zhangsan', password: '123456' })
-const registerForm = reactive({ username: '', password: '123456', realName: '', phone: '', email: '' })
+const registerForm = reactive({ username: '', password: '', realName: '', phone: '', email: '' })
 const carFilters = reactive({ keyword: '', transmission: '', energyType: '', availableOnly: true })
 const orderForm = reactive({ stationId: null, startDate: '', endDate: '', remark: '' })
+const startDatePlaceholder = '\u53d6\u8f66\u65e5\u671f'
+const endDatePlaceholder = '\u8fd8\u8f66\u65e5\u671f'
 const adminCarForm = reactive({
   brand: '比亚迪',
   model: '',
@@ -236,6 +238,21 @@ function getOrderStatusText(status) {
   return orderStatusMap[status] || status
 }
 
+function disableStartDate(date) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return date.getTime() < today.getTime()
+}
+
+function disableEndDate(date) {
+  if (!orderForm.startDate) {
+    return disableStartDate(date)
+  }
+  const startDate = new Date(orderForm.startDate)
+  startDate.setHours(0, 0, 0, 0)
+  return date.getTime() < startDate.getTime()
+}
+
 function canCancelOrder(order) {
   if (isAdmin.value) return order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'COMPLETED'
   return order.orderStatus === 'BOOKED' || order.orderStatus === 'PENDING'
@@ -259,6 +276,14 @@ async function toggleFavorite(carId, favored) {
 async function createOrder(carId) {
   if (!orderForm.stationId || !orderForm.startDate || !orderForm.endDate) {
     ElMessage.warning('请先选择取车点和租赁日期')
+    return
+  }
+    if (orderForm.startDate < new Date().toISOString().slice(0, 10)) {
+    ElMessage.warning('????????????')
+    return
+  }
+  if (orderForm.endDate < orderForm.startDate) {
+    ElMessage.warning('????????????')
     return
   }
   if (!selectedPoint.longitude || !selectedPoint.latitude) {
@@ -353,7 +378,7 @@ function loadBaiduMapScript() {
     return Promise.resolve(window.BMap)
   }
   if (!baiduMapAk) {
-    return Promise.reject(new Error('未配置百度地图 AK，请在 frontend/.env 中设置 VITE_BAIDU_MAP_AK'))
+    return Promise.reject(new Error('??????????????????'))
   }
   return new Promise((resolve, reject) => {
     const callbackName = `initBaiduMap_${Date.now()}`
@@ -473,7 +498,6 @@ onMounted(async () => {
                 <el-form-item label="用户名"><el-input v-model="loginForm.username" /></el-form-item>
                 <el-form-item label="密码"><el-input v-model="loginForm.password" show-password /></el-form-item>
                 <el-button class="wide-btn" type="primary" :loading="loading.auth" @click="handleLogin">登录系统</el-button>
-                <p class="tip">演示账号：zhangsan / 123456，管理员：admin / 123456</p>
               </el-form>
             </el-tab-pane>
             <el-tab-pane label="注册" name="register">
@@ -568,8 +592,8 @@ onMounted(async () => {
           <el-select v-model="orderForm.stationId" placeholder="系统取车点">
             <el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" />
           </el-select>
-          <el-date-picker v-model="orderForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="取车日期" />
-          <el-date-picker v-model="orderForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="还车日期" />
+          <el-date-picker v-model="orderForm.startDate" type="date" value-format="YYYY-MM-DD" :placeholder="startDatePlaceholder" :disabled-date="disableStartDate" />
+          <el-date-picker v-model="orderForm.endDate" type="date" value-format="YYYY-MM-DD" :placeholder="endDatePlaceholder" :disabled-date="disableEndDate" />
           <el-input v-model="orderForm.remark" placeholder="备注信息" />
         </div>
         <div class="map-panel">

@@ -46,7 +46,7 @@ public class AlipayServiceImpl implements IAlipayService {
             AlipayTradePagePayModel model = new AlipayTradePagePayModel();
             model.setOutTradeNo(order.getOrderNo());
             model.setSubject("汽车租赁订单-" + order.getOrderNo());
-            model.setTotalAmount(order.getRentAmount().setScale(2, RoundingMode.HALF_UP).toPlainString());
+            model.setTotalAmount(order.getTotalAmount().setScale(2, RoundingMode.HALF_UP).toPlainString());
             model.setBody("汽车租赁系统支付宝沙盒支付");
             model.setProductCode("FAST_INSTANT_TRADE_PAY");
             request.setBizModel(model);
