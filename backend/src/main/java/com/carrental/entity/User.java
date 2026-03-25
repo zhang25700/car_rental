@@ -19,6 +19,12 @@ public class User {
     private String email;
     private String role;
     private Integer status;
+    private String idCardNo;
+    private String idCardFront;
+    private String idCardBack;
+    private String verifyStatus;
+    private String verifyRemark;
+    private String frozenReason;
     @TableLogic
     private Integer deleted;
     private LocalDateTime createdAt;

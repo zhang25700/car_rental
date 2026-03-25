@@ -18,7 +18,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(200, "success", null);
     }
 
-    public static ApiResponse<Void> fail(Integer code, String message) {
+    public static <T> ApiResponse<T> fail(Integer code, String message) {
         return new ApiResponse<>(code, message, null);
     }
 }

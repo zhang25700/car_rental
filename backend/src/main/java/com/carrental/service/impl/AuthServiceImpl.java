@@ -25,10 +25,10 @@ public class AuthServiceImpl implements IAuthService {
     public Map<String, Object> login(LoginRequest request) {
         User user = userMapper.selectOne(new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
         if (user == null || !user.getPassword().equals(PasswordUtils.encode(request.getPassword()))) {
-            throw new BusinessException(400, "username or password is incorrect");
+            throw new BusinessException(400, "用户名或密码错误");
         }
         if (user.getStatus() != 1) {
-            throw new BusinessException(403, "account disabled");
+            throw new BusinessException(403, "账号已被冻结");
         }
         String token = jwtUtils.createToken(user.getId(), user.getUsername(), user.getRole());
         Map<String, Object> result = new HashMap<>();
@@ -41,7 +41,7 @@ public class AuthServiceImpl implements IAuthService {
     public void register(RegisterRequest request) {
         Long count = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
         if (count > 0) {
-            throw new BusinessException(400, "username already exists");
+            throw new BusinessException(400, "用户名已存在");
         }
         User user = new User();
         user.setUsername(request.getUsername());
@@ -51,6 +51,8 @@ public class AuthServiceImpl implements IAuthService {
         user.setEmail(request.getEmail());
         user.setRole("CUSTOMER");
         user.setStatus(1);
+        user.setVerifyStatus("PENDING");
+        user.setVerifyRemark("请尽快补充身份证信息，等待人工审核");
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         userMapper.insert(user);
@@ -66,6 +68,12 @@ public class AuthServiceImpl implements IAuthService {
         result.put("email", user.getEmail());
         result.put("role", user.getRole());
         result.put("status", user.getStatus());
+        result.put("idCardNo", user.getIdCardNo());
+        result.put("idCardFront", user.getIdCardFront());
+        result.put("idCardBack", user.getIdCardBack());
+        result.put("verifyStatus", user.getVerifyStatus());
+        result.put("verifyRemark", user.getVerifyRemark());
+        result.put("frozenReason", user.getFrozenReason());
         return result;
     }
 }

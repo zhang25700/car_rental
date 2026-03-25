@@ -31,10 +31,16 @@ public class CarController {
     @GetMapping
     public ApiResponse<List<Car>> list(@RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) String brand,
+                                       @RequestParam(required = false) String typeName,
                                        @RequestParam(required = false) String transmission,
                                        @RequestParam(required = false) String energyType,
-                                       @RequestParam(required = false) Boolean availableOnly) {
-        return ApiResponse.success(carService.list(keyword, brand, transmission, energyType, availableOnly));
+                                       @RequestParam(required = false) Boolean availableOnly,
+                                       @RequestParam(required = false) Double minPrice,
+                                       @RequestParam(required = false) Double maxPrice,
+                                       @RequestParam(required = false) String sortBy) {
+        return ApiResponse.success(carService.list(
+            keyword, brand, typeName, transmission, energyType, availableOnly, minPrice, maxPrice, sortBy
+        ));
     }
 
     @GetMapping("/{id}")

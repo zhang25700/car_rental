@@ -18,6 +18,8 @@ public class PickupStation {
     private String contactPhone;
     private String longitude;
     private String latitude;
+    private String businessHours;
+    private String description;
     private Integer status;
     @TableLogic
     private Integer deleted;

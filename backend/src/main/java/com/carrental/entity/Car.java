@@ -14,6 +14,7 @@ public class Car {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String brand;
+    private String typeName;
     private String model;
     private String plateNumber;
     private String color;
@@ -24,6 +25,7 @@ public class Car {
     private BigDecimal deposit;
     private String status;
     private Long stationId;
+    private Integer hotFlag;
     private String coverImage;
     private String description;
     @TableLogic

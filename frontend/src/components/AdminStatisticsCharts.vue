@@ -1,7 +1,7 @@
 <script setup>
-import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import * as echarts from 'echarts'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   token: {
@@ -14,7 +14,10 @@ const props = defineProps({
   },
 })
 
-const incomeDimension = ref('day')
+const pieRef = ref(null)
+const barRef = ref(null)
+const incomeRef = ref(null)
+const incomeMode = ref('month')
 const chartData = ref({
   energyDistribution: [],
   orderStatusDistribution: [],
@@ -23,7 +26,11 @@ const chartData = ref({
   incomeTrendByYear: [],
 })
 
-const orderStatusLabelMap = {
+let pieChart
+let barChart
+let incomeChart
+
+const orderStatusText = {
   PENDING: '待处理',
   BOOKED: '已预订',
   ONGOING: '租赁中',
@@ -31,212 +38,194 @@ const orderStatusLabelMap = {
   CANCELLED: '已取消',
 }
 
-const energyChartRef = ref(null)
-const orderChartRef = ref(null)
-const incomeChartRef = ref(null)
-let energyChart = null
-let orderChart = null
-let incomeChart = null
-
-async function request(path) {
-  const response = await fetch(`${props.baseUrl}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${props.token}`,
-    },
-  })
-  const result = await response.json()
-  if (result.code !== 200) {
-    throw new Error(result.message || '加载图表数据失败')
-  }
-  return result.data
-}
-
 async function loadCharts() {
   try {
-    chartData.value = await request('/api/dashboard/charts')
+    const response = await fetch(`${props.baseUrl}/api/dashboard/charts`, {
+      headers: {
+        Authorization: `Bearer ${props.token}`,
+      },
+    })
+    const result = await response.json()
+    if (result.code !== 200) {
+      throw new Error(result.message || '加载统计数据失败')
+    }
+    chartData.value = result.data
     await nextTick()
-    initCharts()
+    renderCharts()
   } catch (error) {
     ElMessage.error(error.message)
   }
 }
 
+function currentIncomeSeries() {
+  if (incomeMode.value === 'day') return chartData.value.incomeTrendByDay || []
+  if (incomeMode.value === 'year') return chartData.value.incomeTrendByYear || []
+  return chartData.value.incomeTrendByMonth || []
+}
+
+function currentIncomeTitle() {
+  if (incomeMode.value === 'day') return '租金收入按日统计'
+  if (incomeMode.value === 'year') return '租金收入按年统计'
+  return '租金收入按月统计'
+}
+
 function initCharts() {
-  renderEnergyChart()
-  renderOrderChart()
-  renderIncomeChart()
+  if (!pieChart && pieRef.value) pieChart = echarts.init(pieRef.value)
+  if (!barChart && barRef.value) barChart = echarts.init(barRef.value)
+  if (!incomeChart && incomeRef.value) incomeChart = echarts.init(incomeRef.value)
 }
 
-function getLocalizedOrderStatusData() {
-  return (chartData.value.orderStatusDistribution || []).map((item) => ({
-    ...item,
-    name: orderStatusLabelMap[item.name] || item.name,
-  }))
-}
+function renderCharts() {
+  initCharts()
+  if (!pieChart || !barChart || !incomeChart) return
 
-function renderEnergyChart() {
-  if (!energyChartRef.value) return
-  energyChart?.dispose()
-  energyChart = echarts.init(energyChartRef.value)
-  energyChart.setOption({
+  pieChart.setOption({
     title: { text: '车辆能源类型分布', left: 'center', textStyle: { fontSize: 16 } },
     tooltip: { trigger: 'item' },
     legend: { bottom: 0 },
     series: [
       {
-        name: '车辆数量',
         type: 'pie',
-        radius: ['40%', '68%'],
+        radius: ['42%', '68%'],
+        itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 3 },
+        label: { formatter: '{b} {d}%' },
         data: chartData.value.energyDistribution || [],
       },
     ],
   })
-}
 
-function renderOrderChart() {
-  if (!orderChartRef.value) return
-  orderChart?.dispose()
-  orderChart = echarts.init(orderChartRef.value)
-  const localizedData = getLocalizedOrderStatusData()
-  orderChart.setOption({
+  barChart.setOption({
     title: { text: '订单状态统计', left: 'center', textStyle: { fontSize: 16 } },
     tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 20, bottom: 30, top: 56 },
     xAxis: {
       type: 'category',
-      data: localizedData.map((item) => item.name),
+      data: (chartData.value.orderStatusDistribution || []).map((item) => orderStatusText[item.name] || item.name),
+      axisLabel: { interval: 0 },
     },
     yAxis: { type: 'value', name: '订单数' },
     series: [
       {
-        name: '订单数',
-        data: localizedData.map((item) => item.value),
         type: 'bar',
-        barWidth: 36,
-        itemStyle: {
-          borderRadius: [8, 8, 0, 0],
-          color: '#d97706',
-        },
+        data: (chartData.value.orderStatusDistribution || []).map((item) => item.value),
+        barWidth: 26,
+        itemStyle: { color: '#2f6fed', borderRadius: [8, 8, 0, 0] },
       },
     ],
   })
-}
 
-function renderIncomeChart() {
-  if (!incomeChartRef.value) return
-  incomeChart?.dispose()
-  incomeChart = echarts.init(incomeChartRef.value)
-  const currentData = getIncomeTrendData()
+  const incomeSeries = currentIncomeSeries()
   incomeChart.setOption({
-    title: { text: getIncomeTitle(), left: 'center', textStyle: { fontSize: 16 } },
+    title: { text: currentIncomeTitle(), left: 'center', textStyle: { fontSize: 16 } },
     tooltip: { trigger: 'axis' },
-    grid: { left: 60, right: 24, top: 64, bottom: 40 },
+    grid: { left: 50, right: 20, bottom: 40, top: 56 },
     xAxis: {
       type: 'category',
-      data: currentData.map((item) => item.label),
-      axisLabel: {
-        rotate: incomeDimension.value === 'day' ? 35 : 0,
-      },
+      data: incomeSeries.map((item) => item.label),
+      axisLabel: { rotate: incomeMode.value === 'day' ? 30 : 0 },
     },
-    yAxis: { type: 'value', name: '租金收入（元）' },
+    yAxis: { type: 'value', name: '收入（元）' },
     series: [
       {
-        name: '租金收入',
-        data: currentData.map((item) => item.value),
         type: 'bar',
+        data: incomeSeries.map((item) => item.value),
         barWidth: 22,
         barCategoryGap: '55%',
-        itemStyle: {
-          borderRadius: [8, 8, 0, 0],
-          color: '#2563eb',
-        },
+        itemStyle: { color: '#ef7d22', borderRadius: [8, 8, 0, 0] },
       },
     ],
   })
-}
-
-function getIncomeTrendData() {
-  if (incomeDimension.value === 'year') return chartData.value.incomeTrendByYear || []
-  if (incomeDimension.value === 'month') return chartData.value.incomeTrendByMonth || []
-  return chartData.value.incomeTrendByDay || []
-}
-
-function getIncomeTitle() {
-  if (incomeDimension.value === 'year') return '租金收入按年统计'
-  if (incomeDimension.value === 'month') return '租金收入按月统计'
-  return '租金收入按日统计'
-}
-
-function handleDimensionChange(value) {
-  incomeDimension.value = value
-  renderIncomeChart()
 }
 
 function resizeCharts() {
-  energyChart?.resize()
-  orderChart?.resize()
+  pieChart?.resize()
+  barChart?.resize()
   incomeChart?.resize()
 }
 
-onMounted(() => {
-  loadCharts()
+watch(() => props.token, () => {
+  if (props.token) loadCharts()
+})
+
+watch(incomeMode, () => {
+  renderCharts()
+})
+
+onMounted(async () => {
   window.addEventListener('resize', resizeCharts)
+  if (props.token) {
+    await loadCharts()
+  }
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeCharts)
-  energyChart?.dispose()
-  orderChart?.dispose()
+  pieChart?.dispose()
+  barChart?.dispose()
   incomeChart?.dispose()
 })
 </script>
 
 <template>
-  <section class="section-block">
-    <div class="section-head">
-      <h2>图表统计</h2>
+  <section class="chart-shell">
+    <div class="chart-card">
+      <div ref="pieRef" class="chart-box"></div>
     </div>
-    <div class="chart-grid">
-      <div ref="energyChartRef" class="chart-card"></div>
-      <div ref="orderChartRef" class="chart-card"></div>
+    <div class="chart-card">
+      <div ref="barRef" class="chart-box"></div>
     </div>
-    <div class="section-head chart-toolbar">
-      <h2>租金收入趋势</h2>
-      <el-radio-group :model-value="incomeDimension" @update:model-value="handleDimensionChange">
-        <el-radio-button label="day">按日</el-radio-button>
-        <el-radio-button label="month">按月</el-radio-button>
-        <el-radio-button label="year">按年</el-radio-button>
-      </el-radio-group>
+    <div class="chart-card chart-card-wide">
+      <div class="chart-toolbar">
+        <span>租金收入趋势</span>
+        <el-radio-group v-model="incomeMode" size="small">
+          <el-radio-button label="day">按日</el-radio-button>
+          <el-radio-button label="month">按月</el-radio-button>
+          <el-radio-button label="year">按年</el-radio-button>
+        </el-radio-group>
+      </div>
+      <div ref="incomeRef" class="chart-box chart-box-wide"></div>
     </div>
-    <div ref="incomeChartRef" class="chart-card chart-card-wide"></div>
   </section>
 </template>
 
 <style scoped>
-.chart-grid {
+.chart-shell {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-  margin-bottom: 16px;
 }
 
 .chart-card {
-  min-height: 360px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid rgba(20, 36, 56, 0.08);
   border-radius: 20px;
-  background: #f8fafc;
-  border: 1px solid rgba(24, 33, 47, 0.08);
+  box-shadow: 0 14px 28px rgba(28, 54, 90, 0.06);
 }
 
 .chart-card-wide {
-  min-height: 420px;
+  grid-column: 1 / -1;
 }
 
 .chart-toolbar {
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #223044;
+  font-weight: 600;
 }
 
-@media (max-width: 1024px) {
-  .chart-grid {
+.chart-box {
+  height: 320px;
+}
+
+.chart-box-wide {
+  height: 360px;
+}
+
+@media (max-width: 900px) {
+  .chart-shell {
     grid-template-columns: 1fr;
   }
 }

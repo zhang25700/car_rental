@@ -5,6 +5,9 @@ import com.carrental.common.ApiResponse;
 import com.carrental.entity.Car;
 import com.carrental.entity.RentalOrder;
 import com.carrental.entity.User;
+import com.carrental.mapper.BannerMapper;
+import com.carrental.mapper.FeedbackMapper;
+import com.carrental.mapper.NoticeMapper;
 import com.carrental.mapper.CarMapper;
 import com.carrental.mapper.RentalOrderMapper;
 import com.carrental.mapper.UserMapper;
@@ -35,6 +38,12 @@ public class DashboardController {
 
     @Autowired
     private RentalOrderMapper orderMapper;
+    @Autowired
+    private BannerMapper bannerMapper;
+    @Autowired
+    private NoticeMapper noticeMapper;
+    @Autowired
+    private FeedbackMapper feedbackMapper;
 
     @RoleAllowed("ADMIN")
     @GetMapping("/overview")
@@ -45,9 +54,12 @@ public class DashboardController {
         data.put("availableCarCount", carMapper.selectCount(new LambdaQueryWrapper<Car>().eq(Car::getStatus, "AVAILABLE")));
         data.put("orderCount", orderMapper.selectCount(null));
         data.put("customerCount", userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRole, "CUSTOMER")));
+        data.put("bannerCount", bannerMapper.selectCount(null));
+        data.put("noticeCount", noticeMapper.selectCount(null));
+        data.put("feedbackCount", feedbackMapper.selectCount(null));
         BigDecimal income = orderMapper.selectList(new LambdaQueryWrapper<RentalOrder>().eq(RentalOrder::getPaymentStatus, "PAID"))
             .stream()
-            .map(RentalOrder::getRentAmount)
+            .map(RentalOrder::getSettlementAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
         data.put("income", income);
         return ApiResponse.success(data);
@@ -70,6 +82,13 @@ public class DashboardController {
 
         List<Map<String, Object>> transmissionDistribution = cars.stream()
             .collect(Collectors.groupingBy(Car::getTransmission, Collectors.counting()))
+            .entrySet()
+            .stream()
+            .map(entry -> buildChartItem(entry.getKey(), entry.getValue()))
+            .toList();
+
+        List<Map<String, Object>> typeDistribution = cars.stream()
+            .collect(Collectors.groupingBy(Car::getTypeName, Collectors.counting()))
             .entrySet()
             .stream()
             .map(entry -> buildChartItem(entry.getKey(), entry.getValue()))
@@ -98,6 +117,7 @@ public class DashboardController {
 
         data.put("energyDistribution", energyDistribution);
         data.put("transmissionDistribution", transmissionDistribution);
+        data.put("typeDistribution", typeDistribution);
         data.put("orderStatusDistribution", orderStatusDistribution);
         data.put("stationDistribution", stationDistribution);
         data.put("incomeTrendByDay", aggregateIncomeTrend(paidOrders, DateTimeFormatter.ofPattern("yyyy-MM-dd")));
@@ -117,7 +137,7 @@ public class DashboardController {
         return new LinkedHashMap<>(orders.stream()
             .collect(Collectors.groupingBy(
                 order -> formatOrderTime(order.getUpdatedAt(), formatter),
-                Collectors.mapping(RentalOrder::getRentAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                Collectors.mapping(RentalOrder::getSettlementAmount, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
             )))
             .entrySet()
             .stream()

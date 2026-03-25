@@ -20,6 +20,8 @@ offline_user.md
 *.iws
 *.iml
 *.ipr
+.mvn/
+.settings/
 
 ### NetBeans ###
 nbproject/private/
@@ -36,3 +38,11 @@ third-party/nacos/data/
 third-party/nacos/work/
 
 file/
+
+# Local runtime files
+src/main/resources/application-local.yml
+src/main/resources/*.pem
+!.gitkeep
+*.db
+*.tmp
+*.pid

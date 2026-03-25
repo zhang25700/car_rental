@@ -12,6 +12,8 @@ public class OrderCreateRequest {
     @NotNull
     private Long stationId;
     @NotNull
+    private Long returnStationId;
+    @NotNull
     @FutureOrPresent
     private LocalDate startDate;
     @NotNull
@@ -20,5 +22,9 @@ public class OrderCreateRequest {
     private String pickupAddress;
     private String pickupLongitude;
     private String pickupLatitude;
+    private String returnAddress;
+    private String returnLongitude;
+    private String returnLatitude;
+    private String paymentMethod;
     private String remark;
 }
