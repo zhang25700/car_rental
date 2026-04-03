@@ -13,11 +13,11 @@ const userView = ref('home')
 const adminView = ref('system-overview')
 const selectedCar = ref(null)
 
-const loading = reactive({ auth: false, cars: false, orders: false, save: false, pay: false, bannerUpload: false, profileUpload: false })
+const loading = reactive({ auth: false, cars: false, orders: false, save: false, pay: false, bannerUpload: false, profileUpload: false, carUpload: false })
 const loginForm = reactive({ username: 'zhangsan', password: '123456' })
 const registerForm = reactive({ username: '', password: '', realName: '', phone: '', email: '' })
 const profileForm = reactive({ realName: '', phone: '', email: '', idCardNo: '', idCardFront: '', idCardBack: '', verifyStatus: 'PENDING', verifyRemark: '' })
-const carFilters = reactive({ keyword: '', brand: '', typeName: '', transmission: '', energyType: '', sortBy: 'hot', availableOnly: true })
+const carFilters = reactive({ brand: '', typeName: '', transmission: '', energyType: '', sortBy: 'hot', availableOnly: true })
 const rentalForm = reactive({ pickupStationId: null, returnStationId: null, startDate: '', endDate: '', paymentMethod: 'ALIPAY', remark: '' })
 const locationTarget = ref('pickup')
 const pickupPoint = reactive({ address: '', longitude: '', latitude: '' })
@@ -219,7 +219,7 @@ async function handleRegister() {
   } catch (error) { ElMessage.error(error.message) } finally { loading.auth = false }
 }
 function logout() { clearSession(); userView.value = 'home'; adminView.value = 'system-overview'; selectedCar.value = null; orders.value = []; users.value = []; favorites.value = []; feedbacks.value = []; notices.value = [] }
-function goToCatalogWithCar(car) { carFilters.keyword = `${car.brand} ${car.model}`; if (!isLoggedIn.value) { authTab.value = 'login'; return ElMessage.info('请先登录后查询并下单') } userView.value = 'catalog'; loadCars().catch((error) => ElMessage.error(error.message)) }
+function goToCatalogWithCar(car) { carFilters.brand = car.brand; carFilters.typeName = car.typeName; if (!isLoggedIn.value) { authTab.value = 'login'; return ElMessage.info('请先登录后查询并下单') } userView.value = 'catalog'; loadCars().catch((error) => ElMessage.error(error.message)) }
 function chooseCar(car) { selectedCar.value = car; rentalForm.pickupStationId = car.stationId; rentalForm.returnStationId = null; fillPointByStation('pickup', car.stationId); Object.assign(returnPoint, { address: '', longitude: '', latitude: '' }); userView.value = 'payment' }
 function isFavorite(carId) { return favorites.value.some((item) => item.carId === carId) }
 async function toggleFavorite(carId) { try { const favored = isFavorite(carId); await request(`/api/interactions/favorites/${carId}`, { method: favored ? 'DELETE' : 'POST' }); await loadFavorites(); ElMessage.success(favored ? '已取消收藏' : '已加入收藏') } catch (error) { ElMessage.error(error.message) } }
@@ -295,6 +295,25 @@ async function uploadBannerImage(option) {
     option.onError?.(error)
   } finally {
     loading.bannerUpload = false
+  }
+}
+async function uploadCarImage(option) {
+  loading.carUpload = true
+  try {
+    const formData = new FormData()
+    formData.append('file', option.file)
+    const imageUrl = await request('/api/cars/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    carForm.coverImage = `${baseUrl}${imageUrl}`
+    ElMessage.success('车辆图片上传成功')
+    option.onSuccess?.(imageUrl)
+  } catch (error) {
+    ElMessage.error(error.message)
+    option.onError?.(error)
+  } finally {
+    loading.carUpload = false
   }
 }
 async function deleteBanner(id) { try { await request(`/api/banners/${id}`, { method: 'DELETE' }); await loadAdminAssets(); ElMessage.success('轮播图已删除') } catch (error) { ElMessage.error(error.message) } }
@@ -382,14 +401,10 @@ onMounted(async () => { await loadPublicHome(); if (isLoggedIn.value) await boot
           <el-carousel height="360px" indicator-position="outside">
             <el-carousel-item v-for="banner in publicHome.banners" :key="banner.id">
               <div class="banner-card" :style="{ backgroundImage: `linear-gradient(rgba(15,31,54,.28), rgba(15,31,54,.48)), url(${banner.imageUrl})` }">
-                <div class="banner-copy"><p class="eyebrow">汽车租赁管理系统</p><h1>{{ banner.title }}</h1></div>
+                <div class="banner-copy"><h1>{{ banner.title }}</h1></div>
               </div>
             </el-carousel-item>
           </el-carousel>
-          <div class="section-head guest-section-head"><h2>热门车辆</h2><span class="tip">点击热门车辆可进入车型查询</span></div>
-          <div class="car-grid">
-            <article v-for="car in publicHome.hotCars" :key="car.id" class="car-card"><img :src="car.coverImage" :alt="car.model" /><div class="car-body"><div class="card-top"><div><h3>{{ car.brand }} {{ car.model }}</h3><p>{{ car.typeName }} · {{ car.energyType }} · {{ car.transmission }}</p></div><el-tag type="danger">热门</el-tag></div><p class="desc">{{ car.description }}</p><div class="car-meta"><strong>￥{{ car.dailyPrice }}/天</strong><span>押金 ￥{{ car.deposit }}</span></div><el-button type="primary" @click="goToCatalogWithCar(car)">查看车型</el-button></div></article>
-          </div>
           <div class="section-head guest-section-head"><h2>系统公告</h2></div>
           <div class="notice-list"><article v-for="notice in publicHome.notices" :key="notice.id" class="notice-card"><h3>{{ notice.title }}</h3><p>{{ notice.content }}</p></article></div>
         </div>
@@ -406,7 +421,7 @@ onMounted(async () => { await loadPublicHome(); if (isLoggedIn.value) await boot
       <section class="top-shell top-user-shell"><div class="top-user-bar"><div class="top-user"><div><div class="profile-name">{{ currentUser?.realName || currentUser?.username }}</div><div class="profile-role">审核状态：{{ verifyStatusText[currentUser?.verifyStatus] || '待完善' }}</div></div><el-button text @click="logout">退出</el-button></div></div></section>
       <section class="top-shell nav-shell"><div class="top-nav"><div class="nav-pills"><el-button v-for="item in userNavItems" :key="item.key" :type="userView === item.key ? 'primary' : 'default'" @click="userView = item.key">{{ item.label }}</el-button></div></div></section>
       <section v-if="userView === 'home'" class="section-block"><el-carousel height="280px" indicator-position="outside"><el-carousel-item v-for="banner in publicHome.banners" :key="banner.id"><div class="banner-card" :style="{ backgroundImage: `linear-gradient(rgba(15,31,54,.28), rgba(15,31,54,.48)), url(${banner.imageUrl})` }"><div class="banner-copy"><p class="eyebrow">首页推荐</p><h2>{{ banner.title }}</h2></div></div></el-carousel-item></el-carousel><div class="section-head"><h2>热门车辆</h2><el-button @click="userView = 'catalog'">查看全部车型</el-button></div><div class="car-grid"><article v-for="car in publicHome.hotCars" :key="car.id" class="car-card"><img :src="car.coverImage" :alt="car.model" /><div class="car-body"><div class="card-top"><div><h3>{{ car.brand }} {{ car.model }}</h3><p>{{ car.typeName }} · {{ car.energyType }} · {{ car.transmission }}</p></div><el-tag type="danger">热门</el-tag></div><p class="desc">{{ car.description }}</p><div class="car-meta"><strong>￥{{ car.dailyPrice }}/天</strong><span>押金 ￥{{ car.deposit }}</span></div><div class="rent-actions"><el-button plain @click="goToCatalogWithCar(car)">车型查询</el-button><el-button type="primary" @click="chooseCar(car)">立即下单</el-button></div></div></article></div></section>
-      <section v-if="userView === 'rent' || userView === 'catalog'" class="section-block"><div class="section-head"><h2>{{ userView === 'rent' ? '租赁汽车' : '车型查询' }}</h2><el-button @click="loadCars" :loading="loading.cars">刷新结果</el-button></div><div class="toolbar-grid filter-grid"><el-input v-model="carFilters.keyword" placeholder="品牌、车型、车牌" clearable /><el-select v-model="carFilters.brand" placeholder="品牌" clearable><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select><el-select v-model="carFilters.typeName" placeholder="车型类型" clearable><el-option v-for="item in types" :key="item.id" :label="item.name" :value="item.name" /></el-select><el-select v-model="carFilters.transmission" placeholder="变速箱" clearable><el-option label="自动挡" value="自动挡" /><el-option label="手动挡" value="手动挡" /></el-select><el-select v-model="carFilters.energyType" placeholder="能源类型" clearable><el-option label="燃油" value="燃油" /><el-option label="混动" value="混动" /><el-option label="纯电" value="纯电" /></el-select><el-select v-model="carFilters.sortBy"><el-option label="热门优先" value="hot" /><el-option label="价格从低到高" value="priceAsc" /><el-option label="价格从高到低" value="priceDesc" /></el-select><el-switch v-model="carFilters.availableOnly" active-text="仅看可租车辆" /><el-button type="primary" @click="loadCars" :loading="loading.cars">筛选车辆</el-button></div><div v-if="userView === 'rent'" class="map-layout"><div class="map-side"><div class="toolbar-grid compact-grid"><el-radio-group v-model="locationTarget"><el-radio-button label="pickup">选择取车位置</el-radio-button><el-radio-button label="return">选择还车位置</el-radio-button></el-radio-group><el-select v-model="rentalForm.pickupStationId" placeholder="取车网点"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select><el-select v-model="rentalForm.returnStationId" placeholder="还车网点"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select><el-date-picker v-model="rentalForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="取车日期" :disabled-date="disableStartDate" /><el-date-picker v-model="rentalForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="还车日期" :disabled-date="disableEndDate" /></div><div class="point-summary"><div><h4>取车位置</h4><p>{{ pickupPoint.address || '请在地图或下拉框中选择取车位置' }}</p></div><div><h4>还车位置</h4><p>{{ returnPoint.address || '请在地图或下拉框中选择还车位置' }}</p></div></div></div><div class="map-wrap"><div v-if="mapEnabled" ref="mapContainer" class="map-canvas"></div><div v-else class="map-canvas map-fallback"><h3>当前未启用百度地图</h3><p>已自动切换为站点选择模式，你仍然可以通过上方网点下单。</p></div></div></div><div class="car-grid"><article v-for="car in cars" :key="car.id" class="car-card"><img :src="car.coverImage" :alt="car.model" /><div class="car-body"><div class="card-top"><div><h3>{{ car.brand }} {{ car.model }}</h3><p>{{ car.typeName }} · {{ car.energyType }} · {{ car.transmission }}</p></div><el-tag :type="car.status === 'AVAILABLE' ? 'success' : 'warning'">{{ carStatusText[car.status] || car.status }}</el-tag></div><p class="desc">{{ car.description }}</p><div class="car-meta"><strong>￥{{ car.dailyPrice }}/天</strong><span>押金 ￥{{ car.deposit }}</span></div><div class="rent-actions"><el-button plain @click="toggleFavorite(car.id)">{{ isFavorite(car.id) ? '取消收藏' : '加入收藏' }}</el-button><el-button type="primary" :disabled="car.status !== 'AVAILABLE'" @click="chooseCar(car)">下单租赁</el-button></div></div></article></div></section>
+      <section v-if="userView === 'rent' || userView === 'catalog'" class="section-block"><div class="section-head"><h2>{{ userView === 'rent' ? '租赁汽车' : '车型查询' }}</h2><el-button @click="loadCars" :loading="loading.cars">刷新结果</el-button></div><div class="toolbar-grid filter-grid"><el-select v-model="carFilters.brand" placeholder="品牌" clearable><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select><el-select v-model="carFilters.typeName" placeholder="车型类型" clearable><el-option v-for="item in types" :key="item.id" :label="item.name" :value="item.name" /></el-select><el-select v-model="carFilters.transmission" placeholder="变速箱" clearable><el-option label="自动挡" value="自动挡" /><el-option label="手动挡" value="手动挡" /></el-select><el-select v-model="carFilters.energyType" placeholder="能源类型" clearable><el-option label="燃油" value="燃油" /><el-option label="混动" value="混动" /><el-option label="纯电" value="纯电" /></el-select><el-select v-model="carFilters.sortBy"><el-option label="热门优先" value="hot" /><el-option label="价格从低到高" value="priceAsc" /><el-option label="价格从高到低" value="priceDesc" /></el-select><el-switch v-model="carFilters.availableOnly" active-text="仅看可租车辆" /><el-button type="primary" @click="loadCars" :loading="loading.cars">筛选车辆</el-button></div><div v-if="userView === 'rent'" class="map-layout"><div class="map-side"><div class="rental-form-column"><el-radio-group v-model="locationTarget"><el-radio-button label="pickup">选择取车位置</el-radio-button><el-radio-button label="return">选择还车位置</el-radio-button></el-radio-group><el-select v-model="rentalForm.pickupStationId" placeholder="取车网点"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select><el-select v-model="rentalForm.returnStationId" placeholder="还车网点"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select><el-date-picker v-model="rentalForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="取车日期" :disabled-date="disableStartDate" /><el-date-picker v-model="rentalForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="还车日期" :disabled-date="disableEndDate" /></div><div class="point-summary"><div><h4>取车位置</h4><p>{{ pickupPoint.address || '请在地图或下拉框中选择取车位置' }}</p></div><div><h4>还车位置</h4><p>{{ returnPoint.address || '请在地图或下拉框中选择还车位置' }}</p></div></div></div><div class="map-wrap"><div v-if="mapEnabled" ref="mapContainer" class="map-canvas"></div><div v-else class="map-canvas map-fallback"><h3>当前未启用百度地图</h3><p>已自动切换为站点选择模式，你仍然可以通过上方网点下单。</p></div></div></div><div class="car-grid"><article v-for="car in cars" :key="car.id" class="car-card"><img :src="car.coverImage" :alt="car.model" /><div class="car-body"><div class="card-top"><div><h3>{{ car.brand }} {{ car.model }}</h3><p>{{ car.typeName }} · {{ car.energyType }} · {{ car.transmission }}</p></div><el-tag :type="car.status === 'AVAILABLE' ? 'success' : 'warning'">{{ carStatusText[car.status] || car.status }}</el-tag></div><p class="desc">{{ car.description }}</p><div class="car-meta"><strong>￥{{ car.dailyPrice }}/天</strong><span>押金 ￥{{ car.deposit }}</span></div><div class="rent-actions"><el-button plain @click="toggleFavorite(car.id)">{{ isFavorite(car.id) ? '取消收藏' : '加入收藏' }}</el-button><el-button type="primary" :disabled="car.status !== 'AVAILABLE'" @click="chooseCar(car)">下单租赁</el-button></div></div></article></div></section>
       <section v-if="userView === 'payment'" class="section-block"><div class="section-head"><h2>下单支付</h2><el-button @click="userView = 'rent'">返回选车</el-button></div><div v-if="selectedCar" class="payment-layout"><div class="payment-card"><h3>订单车辆</h3><div class="selected-car"><img :src="selectedCar.coverImage" :alt="selectedCar.model" /><div><h3>{{ selectedCar.brand }} {{ selectedCar.model }}</h3><p>{{ selectedCar.typeName }} · {{ selectedCar.energyType }} · {{ selectedCar.transmission }}</p><p>日租金：￥{{ selectedCar.dailyPrice }}，押金：￥{{ selectedCar.deposit }}</p></div></div><el-form label-position="top" class="payment-form"><el-form-item label="取车网点"><el-select v-model="rentalForm.pickupStationId"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select></el-form-item><el-form-item label="还车网点"><el-select v-model="rentalForm.returnStationId"><el-option v-for="station in stations" :key="station.id" :label="`${station.city} · ${station.name}`" :value="station.id" /></el-select></el-form-item><el-form-item label="取车时间"><el-date-picker v-model="rentalForm.startDate" type="date" value-format="YYYY-MM-DD" placeholder="取车日期" :disabled-date="disableStartDate" /></el-form-item><el-form-item label="还车时间"><el-date-picker v-model="rentalForm.endDate" type="date" value-format="YYYY-MM-DD" placeholder="还车日期" :disabled-date="disableEndDate" /></el-form-item><el-form-item label="支付方式"><el-radio-group v-model="rentalForm.paymentMethod"><el-radio label="ALIPAY">支付宝</el-radio><el-radio label="OFFLINE">线下支付</el-radio></el-radio-group></el-form-item><el-form-item label="备注"><el-input v-model="rentalForm.remark" type="textarea" :rows="3" placeholder="可填写用车用途等信息" /></el-form-item></el-form></div><div class="payment-card payment-summary"><h3>费用明细</h3><p>租赁天数：{{ rentalSummary.days }} 天</p><p>车辆租金：￥{{ rentalSummary.rentAmount }}</p><p>押金：￥{{ rentalSummary.deposit }}</p><p>取车地点：{{ pickupPoint.address || (selectedPickupStation ? `${selectedPickupStation.city}${selectedPickupStation.address}` : '未选择') }}</p><p>还车地点：{{ returnPoint.address || (selectedReturnStation ? `${selectedReturnStation.city}${selectedReturnStation.address}` : '未选择') }}</p><p class="tip">如果超出还车时间，系统会按车辆日租金收取超时费用。</p><div class="summary-total">合计：￥{{ rentalSummary.total }}</div><el-button class="wide-btn" type="primary" :loading="loading.save" @click="submitOrder">提交订单</el-button><p v-if="rentalForm.paymentMethod === 'ALIPAY' && !paymentConfig.ready" class="tip">当前支付服务未配置，提交后订单会保留为未支付状态。</p></div></div><el-empty v-else description="请先在车型列表中选择车辆" /></section>
       <section v-if="userView === 'orders'" class="section-block"><div class="section-head"><h2>我的订单</h2><el-button @click="loadOrders">刷新订单</el-button></div><el-table :data="orders" stripe><el-table-column prop="pickupAddress" label="取车地点" min-width="180" /><el-table-column prop="returnAddress" label="还车地点" min-width="180" /><el-table-column prop="startDate" label="取车日期" width="120" /><el-table-column prop="endDate" label="还车日期" width="120" /><el-table-column prop="settlementAmount" label="总金额" width="110" /><el-table-column prop="extraFee" label="超时费用" width="110" /><el-table-column label="支付状态" width="110"><template #default="{ row }">{{ paymentStatusText[row.paymentStatus] || row.paymentStatus }}</template></el-table-column><el-table-column label="订单状态" width="110"><template #default="{ row }">{{ orderStatusText[row.orderStatus] || row.orderStatus }}</template></el-table-column><el-table-column label="操作" min-width="260"><template #default="{ row }"><el-space wrap><el-button size="small" type="success" :disabled="!canPayOrder(row)" :loading="loading.pay" @click="payOrder(row.id)">{{ getPayText(row) }}</el-button><el-button size="small" type="warning" :disabled="!canCancelOrder(row)" @click="operateOrder(row.id, 'cancel')">取消</el-button><el-button size="small" type="primary" :disabled="!canReturnOrder(row)" @click="operateOrder(row.id, 'return')">归还</el-button></el-space></template></el-table-column></el-table></section>
       <section v-if="userView === 'favorites'" class="section-block"><div class="section-head"><h2>收藏车辆</h2></div><div v-if="favoriteCars.length" class="car-grid"><article v-for="car in favoriteCars" :key="car.id" class="car-card"><img :src="car.coverImage" :alt="car.model" /><div class="car-body"><div class="card-top"><div><h3>{{ car.brand }} {{ car.model }}</h3><p>{{ car.typeName }} · {{ car.energyType }} · {{ car.transmission }}</p></div><el-tag>{{ carStatusText[car.status] || car.status }}</el-tag></div><p class="desc">{{ car.description }}</p><div class="rent-actions"><el-button type="danger" plain @click="toggleFavorite(car.id)">取消收藏</el-button><el-button type="primary" @click="chooseCar(car)">立即下单</el-button></div></div></article></div><el-empty v-else description="暂无收藏车辆" /></section>
@@ -494,23 +509,61 @@ onMounted(async () => { await loadPublicHome(); if (isLoggedIn.value) await boot
     </el-dialog>
 
     <el-dialog v-model="dialogVisible.car" :title="editingId.car ? '修改车辆' : '新增车辆'" width="820px" @close="closeDialog('car')">
-      <div class="dialog-grid dialog-grid-wide">
-        <el-select v-model="carForm.brand" placeholder="品牌"><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select>
-        <el-select v-model="carForm.typeName" placeholder="车型类型"><el-option v-for="item in types" :key="item.id" :label="item.name" :value="item.name" /></el-select>
-        <el-input v-model="carForm.model" placeholder="车型" />
-        <el-input v-model="carForm.plateNumber" placeholder="车牌号" />
-        <el-input v-model="carForm.color" placeholder="颜色" />
-        <el-select v-model="carForm.transmission"><el-option label="自动挡" value="自动挡" /><el-option label="手动挡" value="手动挡" /></el-select>
-        <el-select v-model="carForm.energyType"><el-option label="燃油" value="燃油" /><el-option label="混动" value="混动" /><el-option label="纯电" value="纯电" /></el-select>
-        <el-select v-model="carForm.stationId" placeholder="所属网点"><el-option v-for="station in stations" :key="station.id" :label="station.name" :value="station.id" /></el-select>
-        <el-input-number v-model="carForm.seatCount" :min="2" />
-        <el-input-number v-model="carForm.dailyPrice" :min="100" />
-        <el-input-number v-model="carForm.deposit" :min="500" />
-        <el-select v-model="carForm.status"><el-option label="可租赁" value="AVAILABLE" /><el-option label="维护中" value="MAINTENANCE" /><el-option label="已停用" value="DISABLED" /></el-select>
-        <el-switch v-model="carForm.hotFlag" :active-value="1" :inactive-value="0" active-text="热门推荐" />
-        <el-input v-model="carForm.coverImage" placeholder="车辆图片链接" />
-        <el-input v-model="carForm.description" placeholder="车辆说明" />
-      </div>
+      <el-form label-position="top" class="car-dialog-form">
+        <div class="dialog-grid dialog-grid-wide">
+          <el-form-item label="品牌">
+            <el-select v-model="carForm.brand" placeholder="请选择品牌"><el-option v-for="item in brands" :key="item.id" :label="item.name" :value="item.name" /></el-select>
+          </el-form-item>
+          <el-form-item label="车型类型">
+            <el-select v-model="carForm.typeName" placeholder="请选择车型类型"><el-option v-for="item in types" :key="item.id" :label="item.name" :value="item.name" /></el-select>
+          </el-form-item>
+          <el-form-item label="车型名称">
+            <el-input v-model="carForm.model" placeholder="请输入车型名称" />
+          </el-form-item>
+          <el-form-item label="车牌号">
+            <el-input v-model="carForm.plateNumber" placeholder="请输入车牌号" />
+          </el-form-item>
+          <el-form-item label="颜色">
+            <el-input v-model="carForm.color" placeholder="请输入颜色" />
+          </el-form-item>
+          <el-form-item label="变速箱">
+            <el-select v-model="carForm.transmission"><el-option label="自动挡" value="自动挡" /><el-option label="手动挡" value="手动挡" /></el-select>
+          </el-form-item>
+          <el-form-item label="能源类型">
+            <el-select v-model="carForm.energyType"><el-option label="燃油" value="燃油" /><el-option label="混动" value="混动" /><el-option label="纯电" value="纯电" /></el-select>
+          </el-form-item>
+          <el-form-item label="所属网点">
+            <el-select v-model="carForm.stationId" placeholder="请选择所属网点"><el-option v-for="station in stations" :key="station.id" :label="station.name" :value="station.id" /></el-select>
+          </el-form-item>
+          <el-form-item label="座位数">
+            <el-input-number v-model="carForm.seatCount" :min="2" />
+          </el-form-item>
+          <el-form-item label="日租金">
+            <el-input-number v-model="carForm.dailyPrice" :min="100" />
+          </el-form-item>
+          <el-form-item label="押金">
+            <el-input-number v-model="carForm.deposit" :min="500" />
+          </el-form-item>
+          <el-form-item label="车辆状态">
+            <el-select v-model="carForm.status"><el-option label="可租赁" value="AVAILABLE" /><el-option label="维护中" value="MAINTENANCE" /><el-option label="已停用" value="DISABLED" /></el-select>
+          </el-form-item>
+          <el-form-item label="热门推荐">
+            <el-switch v-model="carForm.hotFlag" :active-value="1" :inactive-value="0" active-text="是" inactive-text="否" />
+          </el-form-item>
+          <el-form-item label="本地图片">
+            <el-upload :show-file-list="false" accept=".jpg,.jpeg,.png,.webp,.gif" :http-request="uploadCarImage">
+              <el-button :loading="loading.carUpload">选择本地图片</el-button>
+            </el-upload>
+            <div v-if="carForm.coverImage" class="upload-preview"><img :src="carForm.coverImage" alt="车辆图片预览" /></div>
+          </el-form-item>
+          <el-form-item label="图片链接">
+            <el-input v-model="carForm.coverImage" placeholder="可直接粘贴图片链接" />
+          </el-form-item>
+          <el-form-item label="车辆说明" class="form-span-full">
+            <el-input v-model="carForm.description" type="textarea" :rows="3" placeholder="请输入车辆说明" />
+          </el-form-item>
+        </div>
+      </el-form>
       <template #footer><el-button @click="closeDialog('car')">取消</el-button><el-button type="primary" @click="saveCar">保存</el-button></template>
     </el-dialog>
 

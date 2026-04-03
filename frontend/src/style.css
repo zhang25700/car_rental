@@ -172,6 +172,17 @@ h1, h2, h3, h4, p { margin-top: 0; }
   padding: 24px;
   background: linear-gradient(135deg, #eef4ff 0%, #f8fafc 100%);
 }
+.rental-form-column {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.rental-form-column .el-date-editor,
+.rental-form-column .el-select,
+.rental-form-column .el-radio-group {
+  width: 100%;
+}
 .point-summary { display: grid; gap: 12px; }
 
 .stats-card {
@@ -185,13 +196,23 @@ h1, h2, h3, h4, p { margin-top: 0; }
 
 .admin-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 16px;
 }
-.admin-aside { padding: 14px; position: sticky; top: 24px; height: fit-content; }
-.admin-brand { padding: 8px 12px 18px; font-size: 24px; font-weight: 700; color: #1f3c88; }
+.admin-aside { padding: 12px; position: sticky; top: 24px; height: fit-content; }
+.admin-brand { padding: 8px 10px 14px; font-size: 20px; font-weight: 700; color: #1f3c88; }
 .admin-menu { border-right: none !important; background: transparent !important; }
-.admin-main { display: grid; gap: 20px; }
+.admin-main {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.admin-main .section-block,
+.admin-main .top-shell,
+.admin-main .chart-card {
+  min-width: 0;
+  overflow-x: auto;
+}
 .banner-list { grid-template-columns: 1fr; }
 .banner-mini { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 18px; background: #f8fafc; border: 1px solid rgba(24,33,47,.08); }
 .table-thumb {
@@ -208,6 +229,19 @@ h1, h2, h3, h4, p { margin-top: 0; }
 }
 .dialog-grid-wide {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.car-dialog-form .el-form-item {
+  margin-bottom: 0;
+}
+.car-dialog-form .el-form-item__content,
+.car-dialog-form .el-select,
+.car-dialog-form .el-input-number,
+.car-dialog-form .el-input,
+.car-dialog-form .el-textarea {
+  width: 100%;
+}
+.form-span-full {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 1200px) {
